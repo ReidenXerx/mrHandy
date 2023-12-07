@@ -1,0 +1,83 @@
+{
+  "plugins": ["jsx-a11y", "prettier"],
+  "extends": [
+    "airbnb",
+    "airbnb-typescript",
+    "airbnb/hooks",
+    "plugin:react/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "ignorePatterns": ["craco.config.js", "build/**/*.js"],
+  "rules": {
+    "semi": 0,
+    "react/jsx-filename-extension": [
+      1,
+      { "extensions": [".js", ".jsx", ".tsx", ".ts"] }
+    ],
+    "prettier/prettier": [
+      "warn",
+      {
+        "trailingComma": "es5",
+        "commaDangle": false,
+        "semi": false
+      }
+    ],
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "js": "never",
+        "jsx": "never",
+        "ts": "never",
+        "tsx": "never"
+      }
+    ],
+    // This is because of the issue in eslint. See description here: https://github.com/typescript-eslint/typescript-eslint/issues/1856
+    // note you must disable the base rule as it can report incorrect errors
+    "no-unused-vars": "off",
+    "no-use-before-define": "off",
+    "no-nested-ternary": "off",
+    "no-shadow": "off",
+    "no-debugger": "warn",
+    "no-undef": "off",
+    "no-console": "off",
+    "react/require-default-props": "off",
+    "react/no-unused-prop-types": "off",
+    "react/prop-types": "off",
+    "react/jsx-props-no-spreading": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "react/function-component-definition": [
+      "warn",
+      {
+        "unnamedComponents": "arrow-function",
+        "namedComponents": "arrow-function"
+      }
+    ],
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/semi": "off",
+    "@typescript-eslint/quotes": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@typescript-eslint/no-inferrable-types": "off",
+    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "@typescript-eslint/comma-dangle": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/naming-convention": "off",
+    "@typescript-eslint/no-shadow": "off",
+    "@typescript-eslint/no-use-before-define": "off",
+    "import/no-cycle": "off",
+    "import/no-named-as-default": "off",
+    "class-methods-use-this": "off",
+    "react/display-name": "off",
+    "no-promise-executor-return": "off",
+    "react/jsx-no-useless-fragment": "off",
+    "react/no-unknown-property": "off"
+  }
+}
