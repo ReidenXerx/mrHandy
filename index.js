@@ -106,7 +106,6 @@ async function main() {
     })
   }
 
-  // Assuming translations are common across all sheets, gather and save them last
   const existingTranslations = fs.readJsonSync('./input/translation.json')
   let updatedTranslations = {}
   for (const sheetWithFile of selectedSheetsAnswer.selectedSheets) {
@@ -199,7 +198,6 @@ function writeIntoFiles(resultCollection, translations) {
         spaces: 2,
       })
 
-    // somewhere here u should write this schema into separate file for each entity
     Object.keys(yupResolverSchema).length &&
       fs.writeFileSync(
         `./output/${sheetName}/yupSchema.ts`,
@@ -266,7 +264,6 @@ function processSheetData(sheetData, entityType, fieldsToProcess) {
         }
 
         const fieldType = mapFieldTypeToType(type, label, apiField)
-        // somewhere here u need do this yupResolverSchema = please move it in separate handler
         yupResolverSchema = {
           ...yupResolverSchema,
           ...mapFieldToYupSchemaEntry(
@@ -304,8 +301,6 @@ function mapFieldToYupSchemaEntry(
   nullable,
   editable,
 ) {
-  // Logic to map field type to Yup schema entry
-  // Adjust the logic here based on your specific validation needs
   if (editable) {
     switch (fieldType) {
       case 'string':
@@ -333,7 +328,6 @@ function mapFieldToYupSchemaEntry(
             nullable ? '.nullable()' : ''
           }.label(t('${translationKey}', '${label}'))`,
         }
-      // add other cases as necessary
       default:
         return {
           [apiField]: `string()${
