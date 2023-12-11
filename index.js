@@ -299,42 +299,40 @@ function mapFieldToYupSchemaEntry(
   translationKey,
   label,
   nullable,
-  editable,
+  _editable,
 ) {
-  if (editable) {
-    switch (fieldType) {
-      case 'string':
-        return {
-          [apiField]: `string().required()${
-            nullable ? '.nullable()' : ''
-          }.label(t('${translationKey}', '${label}'))`,
-        }
-      case 'number':
-      case 'id':
-        return {
-          [apiField]: `number().required()${
-            nullable ? '.nullable()' : ''
-          }.label(t('${translationKey}', '${label}'))`,
-        }
-      case 'boolean':
-        return {
-          [apiField]: `boolean().required()${
-            nullable ? '.nullable()' : ''
-          }.label(t('${translationKey}', '${label}'))`,
-        }
-      case 'dateTime':
-        return {
-          [apiField]: `date().required()${
-            nullable ? '.nullable()' : ''
-          }.label(t('${translationKey}', '${label}'))`,
-        }
-      default:
-        return {
-          [apiField]: `string()${
-            nullable ? '.nullable()' : ''
-          }.label(t('${translationKey}', '${label}'))`,
-        }
-    }
+  switch (fieldType) {
+    case 'string':
+      return {
+        [apiField]: `string().required()${
+          nullable ? '.nullable()' : ''
+        }.label(t('${translationKey}', '${label}'))`,
+      }
+    case 'number':
+    case 'id':
+      return {
+        [apiField]: `number().required()${
+          nullable ? '.nullable()' : ''
+        }.label(t('${translationKey}', '${label}'))`,
+      }
+    case 'boolean':
+      return {
+        [apiField]: `boolean().required()${
+          nullable ? '.nullable()' : ''
+        }.label(t('${translationKey}', '${label}'))`,
+      }
+    case 'dateTime':
+      return {
+        [apiField]: `date().required()${
+          nullable ? '.nullable()' : ''
+        }.label(t('${translationKey}', '${label}'))`,
+      }
+    default:
+      return {
+        [apiField]: `string()${
+          nullable ? '.nullable()' : ''
+        }.label(t('${translationKey}', '${label}'))`,
+      }
   }
 }
 
@@ -360,9 +358,9 @@ function fieldsObjectToString(fields) {
   str += 'export const FIELDS = {\n'
 
   for (const key in fields) {
-    str += `  ${key}: {\n`
-    str += `    component: ${fields[key].component},\n`
-    str += '  },\n'
+    str += `  ${key}: (\n`
+    str += `    ${fields[key].component},\n`
+    str += '  ),\n'
   }
 
   str += '};\n'
@@ -387,34 +385,37 @@ function determineComponent(
   apiField,
   label,
   translationKey,
-  editable,
+  _editable,
 ) {
+  const commonFields = [
+    'active',
+    'created',
+    'createdBy',
+    'lastUpdatedBy',
+    'lastUpdated',
+    'startDate',
+    'endDate',
+    'instanceId',
+  ]
+  if (commonFields.includes(apiField)) {
+    return `commonColumns.${apiField}`
+  }
   switch (fieldType) {
     case 'Text':
     case 'Long':
-      return editable
-        ? `<TextField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
-        : `<TextField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id' disabled={${!editable}}/>`
+      return `<TextField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
     case 'Number':
-      return editable
-        ? `<NumberField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
-        : `<NumberField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id' disabled={${!editable}} />`
+      return `<NumberField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
     case 'Checkbox':
-      return editable
-        ? `<Checkbox name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
-        : `<Checkbox name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id' disabled={${!editable}} />`
+      return `<Checkbox name="${apiField}" control={control} label={t('${translationKey}', '${label}')} data-testid='${apiField}-test-id'/>`
     case 'Date':
     case 'DateTime':
     case 'datetime':
     case 'Datetime':
     case 'Date time':
-      return editable
-        ? `<DatePickerField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} />`
-        : `<DatePickerField name="${apiField}" control={control} label={t('${translationKey}', '${label}')}  disabled={${!editable}} />`
+      return `<DatePickerField name="${apiField}" control={control} label={t('${translationKey}', '${label}')} />`
     case 'LOV': // List of Values
-      return editable
-        ? `<LOV name="${apiField}" control={control} label={t('${translationKey}', '${label}')} />`
-        : `<LOV name="${apiField}" control={control} label={t('${translationKey}', '${label}')}  disabled={${!editable}} />`
+      return `<LOV name="${apiField}" control={control} label={t('${translationKey}', '${label}')} />`
     default:
       return `<div>Unknown field type for ${apiField}</div>` // Default case for unknown field type
   }
