@@ -1,4 +1,5 @@
 import fs from 'fs'
+import inquirer from 'inquirer'
 import path from 'path'
 
 // Input and output directories
@@ -159,29 +160,29 @@ export default ${hookName};
   } else {
     // Mutation hook template
     hookContent = `
-const ${hookName} = () => {
-  const client = useRecoilValue(apiClient);
-  const queryClient = useQueryClient();
-  if (!client) throw new Error('MISSING_CLIENT');
+      const ${hookName} = () => {
+        const client = useRecoilValue(apiClient);
+        const queryClient = useQueryClient();
+        if (!client) throw new Error('MISSING_CLIENT');
 
-  return useMutation<${returnType}, ApiError, number>(
-    [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'update'],
-    (${generateParamListWithTypes(
-      parameters,
-    )}) => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
-      parameters,
-    )}),
-    {
-      onSuccess: async () => {
-        await queryClient.invalidateQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
-        await queryClient.refetchQueries([${baseQueryConstName}.${baseQueryKey}', '${baseQueryConstName}.${specificQueryKey}]);
-      }
-    }
-  );
-};
+        return useMutation<${returnType}, ApiError, number>(
+          [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'update'],
+          (${generateParamListWithTypes(
+            parameters,
+          )}) => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
+            parameters,
+          )}),
+          {
+            onSuccess: async () => {
+              await queryClient.invalidateQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
+              await queryClient.refetchQueries([${baseQueryConstName}.${baseQueryKey}', '${baseQueryConstName}.${specificQueryKey}]);
+            }
+          }
+        );
+      };
 
-export default ${hookName};
-`
+      export default ${hookName};
+      `
   }
 
   return hookContent
@@ -209,48 +210,76 @@ if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true })
 }
 
-// Read controller files and generate hooks
-fs.readdirSync(inputDir).forEach((file) => {
-  const controllerName = path.basename(file, '.ts')
-  const fileContent = fs.readFileSync(path.join(inputDir, file), 'utf8')
-  // Extract method declarations
-  const methodDeclarations = fileContent.match(
-    /public\s+[a-zA-Z]+\([^)]*\)\s*:\s*CancelablePromise<[^{]+?{/g,
-  )
-  const baseQueryKey = extractName(controllerName).suffix
-  const queriesFileName = `${baseQueryKey}Queries.ts`
-  const baseQueryConstName = `${baseQueryKey}Queries`
-  const queries = {
-    [baseQueryKey]: baseQueryKey.toLowerCase(),
-  }
-  methodDeclarations.forEach((methodDeclaration) => {
-    const cleanMethodDeclaration = methodDeclaration.replace(/\s+/g, ' ').trim()
-    const { returnType, parameters } = extractMethodDetails(
-      cleanMethodDeclaration,
-    )
-    const methodName = methodDeclaration.split(' ')[1].split('(')[0]
-    const specificQueryKey = extractName(methodName).suffix
-    queries[specificQueryKey] = camelToKebabCase(specificQueryKey)
-    const hookName = generateHookName(methodName)
-    const hookContent = generateHookFile({
-      baseQueryKey,
-      specificQueryKey,
-      baseQueryConstName,
-      methodName,
-      hookName,
-      controllerName,
-      returnType,
-      parameters,
-    })
-    const hookFileName = `${hookName}.ts`
-    const outputHookFilePath = path.join(outputDir, hookFileName)
-    fs.writeFileSync(outputHookFilePath, hookContent)
-  })
-  generateQueryFile(
-    queries,
-    baseQueryKey,
-    path.join(outputDir, queriesFileName),
-  )
-})
+const processFiles = async () => {
+  // Get all controller files
+  const files = fs.readdirSync(inputDir).filter((file) => file.endsWith('.ts'))
 
-console.log('Hooks generated successfully.')
+  // Prompt the user to select files to process
+  const answers = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      message: 'Select controller files to process',
+      name: 'selectedFiles',
+      choices: files.map((file) => ({ name: file })),
+      validate: (answer) => {
+        if (answer.length < 1) {
+          return 'You must choose at least one file.'
+        }
+        return true
+      },
+    },
+  ])
+
+  answers.selectedFiles.forEach((file) => {
+    const controllerName = path.basename(file, '.ts')
+    const fileContent = fs.readFileSync(path.join(inputDir, file), 'utf8')
+    const outputControllerDir = path.join(outputDir, controllerName)
+    if (!fs.existsSync(outputControllerDir)) {
+      fs.mkdirSync(outputControllerDir, { recursive: true })
+    }
+    // Extract method declarations
+    const methodDeclarations = fileContent.match(
+      /public\s+[a-zA-Z]+\([^)]*\)\s*:\s*CancelablePromise<[^{]+?{/g,
+    )
+    const baseQueryKey = extractName(controllerName).suffix
+    const queriesFileName = `${baseQueryKey}Queries.ts`
+    const baseQueryConstName = `${baseQueryKey}Queries`
+    const queries = {
+      [baseQueryKey]: camelToKebabCase(specificQueryKey),
+    }
+    methodDeclarations.forEach((methodDeclaration) => {
+      const cleanMethodDeclaration = methodDeclaration
+        .replace(/\s+/g, ' ')
+        .trim()
+      const { returnType, parameters } = extractMethodDetails(
+        cleanMethodDeclaration,
+      )
+      const methodName = methodDeclaration.split(' ')[1].split('(')[0]
+      const specificQueryKey = extractName(methodName).suffix
+      queries[specificQueryKey] = camelToKebabCase(specificQueryKey)
+      const hookName = generateHookName(methodName)
+      const hookContent = generateHookFile({
+        baseQueryKey,
+        specificQueryKey,
+        baseQueryConstName,
+        methodName,
+        hookName,
+        controllerName,
+        returnType,
+        parameters,
+      })
+      const hookFileName = `${hookName}.ts`
+
+      const outputHookFilePath = path.join(outputControllerDir, hookFileName)
+      fs.writeFileSync(outputHookFilePath, hookContent)
+    })
+    generateQueryFile(
+      queries,
+      baseQueryKey,
+      path.join(outputControllerDir, queriesFileName),
+    )
+  })
+  console.log('Hooks generated successfully.')
+}
+
+processFiles().catch(console.error)
