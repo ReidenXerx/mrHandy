@@ -245,7 +245,7 @@ const processFiles = async () => {
     const queriesFileName = `${baseQueryKey}Queries.ts`
     const baseQueryConstName = `${baseQueryKey}Queries`
     const queries = {
-      [baseQueryKey]: camelToKebabCase(specificQueryKey),
+      [baseQueryKey]: camelToKebabCase(baseQueryKey),
     }
     methodDeclarations.forEach((methodDeclaration) => {
       const cleanMethodDeclaration = methodDeclaration

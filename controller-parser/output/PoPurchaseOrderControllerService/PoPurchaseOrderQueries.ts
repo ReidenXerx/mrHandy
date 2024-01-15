@@ -1,5 +1,5 @@
 export const PoPurchaseOrderQueries = {
-  PoPurchaseOrder: 'popurchaseorder',
+  PoPurchaseOrder: 'po-purchase-order',
   PoPurchaseOrderInterfaceDoc: 'po-purchase-order-interface-doc',
   PoPurchaseOrderLovProfiles: 'po-purchase-order-lov-profiles',
   PoPurchaseOrderLocationDistributions: 'po-purchase-order-location-distributions',
