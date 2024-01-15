@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "gen": "node --inspect index.js",
+    "gen-hooks": "node --inspect-brk controller-parser/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

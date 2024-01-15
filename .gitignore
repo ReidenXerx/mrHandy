@@ -3,6 +3,6 @@
 # dependencies
 /node_modules
 /.vscode
-/input/*
-/output/*
+# /input/*
+# /output/*
 package-lock.json

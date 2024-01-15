@@ -167,17 +167,7 @@ function writeIntoFiles(resultCollection, translations) {
         spaces: 2,
       })
 
-    const columnsString = columns
-      .map(
-        (column) => `{
-      field: '${column.field}',
-      headerName: ${column.headerName},
-      flex: ${column.flex},
-      type: '${column.type}'
-    }`,
-      )
-      .join(',\n')
-
+    const columnsString = getColumnsString(columns)
     columnsString &&
       fs.writeFileSync(
         `./output/${sheetName}/columns.ts`,
@@ -367,6 +357,45 @@ function fieldsObjectToString(fields) {
   return str
 }
 
+const getColumnsString = (columns) => {
+  const commonColumns = [
+    'active',
+    'created',
+    'createdBy',
+    'lastUpdatedBy',
+    'lastUpdated',
+    'startDate',
+    'endDate',
+    'instanceId',
+  ]
+
+  const columnsString = columns
+    .map((column) => {
+      if (commonColumns.includes(column.field)) {
+        return `commonColumns.${column.field}`
+      } else if (column.type === 'dateTime') {
+        return `{
+            field: '${column.field}',
+            headerName: ${column.headerName},
+            flex: ${column.flex},
+            type: '${column.type}'
+            valueGetter: (d: GridValueGetterParams<any, string>) => parseISO(d.value ?? ''),
+            valueFormatter: (d: GridValueFormatterParams<Date>) => fDateTime(d.value)
+          }`
+      } else {
+        return `{
+            field: '${column.field}',
+            headerName: ${column.headerName},
+            flex: ${column.flex},
+            type: '${column.type}'
+          }`
+      }
+    })
+    .join(',\n')
+
+  return columnsString
+}
+
 function processTranslations(sheetData) {
   const translations = {}
   sheetData.forEach((row) => {
@@ -387,19 +416,6 @@ function determineComponent(
   translationKey,
   _editable,
 ) {
-  const commonFields = [
-    'active',
-    'created',
-    'createdBy',
-    'lastUpdatedBy',
-    'lastUpdated',
-    'startDate',
-    'endDate',
-    'instanceId',
-  ]
-  if (commonFields.includes(apiField)) {
-    return `commonColumns.${apiField}`
-  }
   switch (fieldType) {
     case 'Text':
     case 'Long':
@@ -434,6 +450,7 @@ function mapFieldTypeToType(fieldType, label, fieldName) {
     case 'Number (integer)':
     case 'Number':
     case 'Number (no formatting)':
+    case 'number':
       return 'number'
     case 'Checkbox':
       return 'boolean'
