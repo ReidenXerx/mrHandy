@@ -50,10 +50,20 @@ const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 // Function to generate hook name
 const generateHookName = (methodName) => {
   const verb = methodName.match(
-    /^(get|post|update|delete|download|approve|cancel|import)/i,
+    /^(get|post|update|delete|download|approve|cancel|import|proceed|end|import)/i,
   )[0]
   const suffix = methodName.replace(verb, '')
-  if (['approve', 'cancel', 'download'].includes(verb.toLowerCase())) {
+  if (
+    [
+      'approve',
+      'cancel',
+      'download',
+      'update',
+      'proceed',
+      'end',
+      'import',
+    ].includes(verb.toLowerCase())
+  ) {
     return `use${capitalize(verb)}${capitalize(suffix)}`
   } else if (verb.toLowerCase() === 'get') {
     return `useFetch${capitalize(suffix)}`
@@ -72,7 +82,11 @@ const extractName = (methodName) => {
 // Extract ReturnType and Parameters from a controller method declaration
 const extractMethodDetails = (methodDeclaration) => {
   const returnTypeMatch = methodDeclaration.match(/:\sCancelablePromise<(.+?)>/)
-  const returnType = returnTypeMatch ? returnTypeMatch[1] : 'unknown'
+  const returnType = returnTypeMatch
+    ? returnTypeMatch[1].includes('<')
+      ? `${returnTypeMatch[1]}>`
+      : returnTypeMatch[1]
+    : 'unknown'
 
   const parametersMatch = methodDeclaration.match(/\(([^)]+)\)/)
   let parameters = []
@@ -165,7 +179,7 @@ export default ${hookName};
         const queryClient = useQueryClient();
         if (!client) throw new Error('MISSING_CLIENT');
 
-        return useMutation<${returnType}, ApiError, number>(
+        return useMutation<${returnType}, ApiError, requestBodyType>(
           [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'update'],
           (${generateParamListWithTypes(
             parameters,
@@ -175,7 +189,7 @@ export default ${hookName};
           {
             onSuccess: async () => {
               await queryClient.invalidateQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
-              await queryClient.refetchQueries([${baseQueryConstName}.${baseQueryKey}', '${baseQueryConstName}.${specificQueryKey}]);
+              await queryClient.refetchQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
             }
           }
         );

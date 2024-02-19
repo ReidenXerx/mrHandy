@@ -3,6 +3,8 @@
 # dependencies
 /node_modules
 /.vscode
-# /input/*
-# /output/*
+/controller-parser/input-controllers
+/controller-parser/output
+/input/*
+/output/*
 package-lock.json

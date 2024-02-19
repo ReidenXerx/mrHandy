@@ -3,6 +3,12 @@ import inquirer from 'inquirer'
 import path from 'path'
 import xlsx from 'xlsx'
 
+const validateFieldNamesConsistency = (apiField) => {
+  if (apiField === 'lastUpdateDate') return 'lastUpdated'
+  if (apiField === 'creationDate') return 'created'
+  return apiField
+}
+
 async function main() {
   const xlsxFiles = fs
     .readdirSync('./input')
@@ -66,7 +72,7 @@ async function main() {
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName])
     // Get a list of API Field names from the sheet data
     const apiFieldChoices = sheetData
-      .map((row) => row['API Field'])
+      .map((row) => validateFieldNamesConsistency(row['API Field']))
       .filter(Boolean)
     apiFieldChoices.push(new inquirer.Separator(), 'All fields')
 
@@ -207,7 +213,7 @@ function processSheetData(sheetData, entityType, fieldsToProcess) {
   let yupResolverSchema = {}
 
   sheetData.forEach((row) => {
-    const apiField = row['API Field']
+    const apiField = validateFieldNamesConsistency(row['API Field'])
     const label = row['Label']
     const translationKey = apiField
       ? `${capitalizeFirstLetter(apiField)}Label`
@@ -235,7 +241,6 @@ function processSheetData(sheetData, entityType, fieldsToProcess) {
           flex: 1,
           type: fieldType,
         })
-
         dataSampleConfig.push({ type: fieldType, field: apiField })
 
         defaultVisibleColumns[apiField] = visible
@@ -367,6 +372,7 @@ const getColumnsString = (columns) => {
     'startDate',
     'endDate',
     'instanceId',
+    'runNumber',
   ]
 
   const columnsString = columns
@@ -378,16 +384,18 @@ const getColumnsString = (columns) => {
             field: '${column.field}',
             headerName: ${column.headerName},
             flex: ${column.flex},
-            type: '${column.type}'
-            valueGetter: (d: GridValueGetterParams<any, string>) => parseISO(d.value ?? ''),
-            valueFormatter: (d: GridValueFormatterParams<Date>) => fDateTime(d.value)
+            type: '${column.type}',
+            valueGetter: (d: GridValueGetterParams<any, string>) => d.value && parseISO(d.value),
+            valueFormatter: (d: GridValueFormatterParams<Date>) => fDateTime(d.value),
+            minWidth: 150
           }`
       } else {
         return `{
             field: '${column.field}',
             headerName: ${column.headerName},
             flex: ${column.flex},
-            type: '${column.type}'
+            type: '${column.type}',
+            minWidth: 150
           }`
       }
     })
@@ -445,6 +453,9 @@ function mapFieldTypeToType(fieldType, label, fieldName) {
     fieldName.includes('Id')
   ) {
     return 'id'
+  }
+  if (label.includes('number') || label.includes('Number')) {
+    return 'number'
   }
   switch (fieldType) {
     case 'Number (integer)':
