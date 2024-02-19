@@ -140,7 +140,7 @@ const ${hookName} = <Select = ${returnType}>(
 
   return useSuspenseQuery<${returnType}, ErrorResponse, Select>({
     queryKey: ${baseQueryConstName}.${hookName.slice(
-      2,
+      3,
     )}(${generateParamListWithoutTypes(parameters)}),
     queryFn: () => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
       parameters,
@@ -163,7 +163,7 @@ const ${hookName} = ({${generateParamListWithoutTypes(
 
   return useMutation<Blob, ApiError, number>({
     mutationKey: ${baseQueryConstName}.${hookName.slice(
-      2,
+      3,
     )}(${generateParamListWithoutTypes(parameters)}),
     mutationFn: () => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
       parameters,
@@ -183,17 +183,17 @@ export default ${hookName};
 
         return useMutation<${returnType}, ApiError, REQUEST_BODY_TYPE>({
           mutationKey: ${baseQueryConstName}.${hookName.slice(
-            2,
+            3,
           )}(${generateParamListWithoutTypes(parameters)}),
           mutationFn: (requestBody: REQUEST_BODY_TYPE) => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
             parameters,
           )}, requestBody),
           onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
-              2,
+              3,
             )}(${generateParamListWithoutTypes(parameters)}) });
             await queryClient.refetchQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
-              2,
+              3,
             )}(${generateParamListWithoutTypes(parameters)}) });
           }
         });
@@ -211,16 +211,26 @@ export default ${hookName};
  * @param {Object} queryMappings - The object containing the query mappings.
  * @param {string} fileName - The desired name for the output file (without extension).
  */
-const generateQueryFile = (queryMappings, baseQueryKey, path) => {
+const generateQueryFile = (queryMappings, baseQueryKey, filePath) => {
   let fileContent = `export const ${baseQueryKey}Queries = {\n`
 
-  for (const [key, value] of Object.entries(queryMappings)) {
-    fileContent += `  ${key}: '${value}',\n`
-  }
+  Object.entries(queryMappings).forEach(([key, parameters]) => {
+    if (parameters.length) {
+      fileContent += `  ${key}: (${generateParamListWithTypes(
+        parameters,
+      )}) => [\`${camelToKebabCase(baseQueryKey)}\`, \`${camelToKebabCase(
+        key,
+      )}\`, \`$\{${generateParamListWithoutTypes(parameters)}\}\`],\n`
+    } else {
+      fileContent += `  ${key}: () => [\`${camelToKebabCase(
+        baseQueryKey,
+      )}\`, \`${camelToKebabCase(key)}\`],\n`
+    }
+  })
 
   fileContent += '} as const;\n'
 
-  fs.writeFileSync(path, fileContent)
+  fs.writeFileSync(filePath, fileContent)
 }
 
 // Ensure output directory exists
@@ -274,7 +284,14 @@ const processFiles = async () => {
       )
       const methodName = methodDeclaration.split(' ')[1].split('(')[0]
       const specificQueryKey = extractName(methodName).suffix
-      queries[specificQueryKey] = camelToKebabCase(specificQueryKey)
+      // queries[specificQueryKey] = parameters.length
+      //   ? `(${generateParamListWithTypes(parameters)}) => \`${camelToKebabCase(
+      //       baseQueryKey,
+      //     )} - $\{${generateParamListWithoutTypes(parameters)}\}\``
+      //   : `() => \`${camelToKebabCase(baseQueryKey)}\``
+
+      queries[specificQueryKey] = parameters
+
       const hookName = generateHookName(methodName)
       const hookContent = generateHookFile({
         baseQueryKey,
