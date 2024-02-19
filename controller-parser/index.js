@@ -138,13 +138,16 @@ const ${hookName} = <Select = ${returnType}>(
   const client = useRecoilValue(apiClient);
   if (!client) throw new Error('MISSING_CLIENT');
 
-  return useQuery<${returnType}, ErrorResponse, Select>(
-    [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'fetch'],
-    () => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
+  return useSuspenseQuery<${returnType}, ErrorResponse, Select>({
+    queryKey: ${baseQueryConstName}.${hookName.slice(
+      2,
+    )}(${generateParamListWithoutTypes(parameters)}),
+    queryFn: () => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
       parameters,
     )}),
-    { cacheTime: HalfHourCacheDuration, ...options }
-  );
+    staleTime: HalfHourCacheDuration,
+    ...options
+  });
 };
 
 export default ${hookName};
@@ -158,15 +161,14 @@ const ${hookName} = ({${generateParamListWithoutTypes(
   const client = useRecoilValue(apiClient);
   if (!client) throw new Error('MISSING_CLIENT');
 
-  return useMutation<Blob, ApiError, number>(
-    [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'download'],
-    async () => {
-      const data = await client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
-        parameters,
-      )});
-      return new Blob(data);
-    }
-  );
+  return useMutation<Blob, ApiError, number>({
+    mutationKey: ${baseQueryConstName}.${hookName.slice(
+      2,
+    )}(${generateParamListWithoutTypes(parameters)}),
+    mutationFn: () => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
+      parameters,
+    )}),
+  });
 };
 
 export default ${hookName};
@@ -179,20 +181,22 @@ export default ${hookName};
         const queryClient = useQueryClient();
         if (!client) throw new Error('MISSING_CLIENT');
 
-        return useMutation<${returnType}, ApiError, requestBodyType>(
-          [${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}, 'update'],
-          (${generateParamListWithTypes(
+        return useMutation<${returnType}, ApiError, REQUEST_BODY_TYPE>({
+          mutationKey: ${baseQueryConstName}.${hookName.slice(
+            2,
+          )}(${generateParamListWithoutTypes(parameters)}),
+          mutationFn: (requestBody: REQUEST_BODY_TYPE) => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
             parameters,
-          )}) => client.${controllerName}.${methodName}(${generateParamListWithoutTypes(
-            parameters,
-          )}),
-          {
-            onSuccess: async () => {
-              await queryClient.invalidateQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
-              await queryClient.refetchQueries([${baseQueryConstName}.${baseQueryKey}, ${baseQueryConstName}.${specificQueryKey}]);
-            }
+          )}, requestBody),
+          onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
+              2,
+            )}(${generateParamListWithoutTypes(parameters)}) });
+            await queryClient.refetchQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
+              2,
+            )}(${generateParamListWithoutTypes(parameters)}) });
           }
-        );
+        });
       };
 
       export default ${hookName};
