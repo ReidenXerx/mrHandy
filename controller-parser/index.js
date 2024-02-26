@@ -7,6 +7,23 @@ const inputDir = './controller-parser/input-controllers'
 const outputDir = './controller-parser/output'
 
 /**
+ * Extracts all URL properties from the TypeScript file content.
+ * @param fileContent - The content of the TypeScript file as a string.
+ * @returns An array of URL strings.
+ */
+const extractUrls = (fileContent) => {
+  const urlRegex = /url:\s*'([^']+)'/g
+  let match
+  const urls = []
+
+  while ((match = urlRegex.exec(fileContent)) !== null) {
+    urls.push(match[1])
+  }
+
+  return urls
+}
+
+/**
  * Generates a parameter list as a string without types.
  * @param {Array} parameters - The array of parameter objects.
  * @return {string} A comma-separated list of parameter names.
@@ -122,6 +139,7 @@ const generateHookFile = ({
   controllerName,
   returnType,
   parameters,
+  url,
 }) => {
   const hookType = determineHookType(methodName)
   let hookContent = ''
@@ -129,10 +147,11 @@ const generateHookFile = ({
   if (hookType === 'fetch') {
     // Fetch hook template
     hookContent = `
+    //request url: ${url}
 const ${hookName} = <Select = ${returnType}>(
   {${generateParamListWithoutTypes(
     parameters,
-  )}}: { ${generateParamListWithTypes(parameters)} }
+  )}}: { ${generateParamListWithTypes(parameters)} },
   options?: UseQueryOptions<${returnType}, ErrorResponse, Select>
 ) => {
   const client = useRecoilValue(apiClient);
@@ -155,6 +174,7 @@ export default ${hookName};
   } else if (hookType === 'download') {
     // Download hook template
     hookContent = `
+    //request url: ${url}
 const ${hookName} = ({${generateParamListWithoutTypes(
       parameters,
     )}}: { ${generateParamListWithTypes(parameters)} }) => {
@@ -176,6 +196,7 @@ export default ${hookName};
   } else {
     // Mutation hook template
     hookContent = `
+    //request url: ${url}
       const ${hookName} = () => {
         const client = useRecoilValue(apiClient);
         const queryClient = useQueryClient();
@@ -189,10 +210,10 @@ export default ${hookName};
             parameters,
           )}, requestBody),
           onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
+            await queryClient.invalidateQueries({ queryKey: ${baseQueryConstName}.Fetch${hookName.slice(
               3,
             )}(${generateParamListWithoutTypes(parameters)}) });
-            await queryClient.refetchQueries({ queryKey: Fetch${baseQueryConstName}.${hookName.slice(
+            await queryClient.refetchQueries({ queryKey: ${baseQueryConstName}.Fetch${hookName.slice(
               3,
             )}(${generateParamListWithoutTypes(parameters)}) });
           }
@@ -214,17 +235,28 @@ export default ${hookName};
 const generateQueryFile = (queryMappings, baseQueryKey, filePath) => {
   let fileContent = `export const ${baseQueryKey}Queries = {\n`
 
-  Object.entries(queryMappings).forEach(([key, parameters]) => {
-    if (parameters.length) {
-      fileContent += `  ${key}: (${generateParamListWithTypes(
+  Object.entries(queryMappings).forEach(([key, [parameters, queryAction]]) => {
+    queryAction = queryAction === 'get' ? 'fetch' : queryAction
+    if (parameters.length && Array.isArray(parameters)) {
+      fileContent += `  ${capitalize(
+        queryAction,
+      )}${key}: (${generateParamListWithTypes(
         parameters,
-      )}) => [\`${camelToKebabCase(baseQueryKey)}\`, \`${camelToKebabCase(
+      )}) => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
         key,
-      )}\`, \`$\{${generateParamListWithoutTypes(parameters)}\}\`],\n`
+      )}', \`$\{${generateParamListWithoutTypes(
+        parameters,
+      )}\}\`, '${queryAction}'],\n`
+    } else if (queryAction.length > 1) {
+      fileContent += `  ${capitalize(
+        queryAction,
+      )}${key}: () => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
+        key,
+      )}', '${queryAction}'],\n`
     } else {
-      fileContent += `  ${key}: () => [\`${camelToKebabCase(
+      fileContent += `  ${key}: () => ['${camelToKebabCase(
         baseQueryKey,
-      )}\`, \`${camelToKebabCase(key)}\`],\n`
+      )}', '${camelToKebabCase(key)}'],\n`
     }
   })
 
@@ -269,13 +301,15 @@ const processFiles = async () => {
     const methodDeclarations = fileContent.match(
       /public\s+[a-zA-Z]+\([^)]*\)\s*:\s*CancelablePromise<[^{]+?{/g,
     )
+
+    const urlsByMethod = extractUrls(fileContent)
     const baseQueryKey = extractName(controllerName).suffix
     const queriesFileName = `${baseQueryKey}Queries.ts`
     const baseQueryConstName = `${baseQueryKey}Queries`
     const queries = {
       [baseQueryKey]: camelToKebabCase(baseQueryKey),
     }
-    methodDeclarations.forEach((methodDeclaration) => {
+    methodDeclarations.forEach((methodDeclaration, index) => {
       const cleanMethodDeclaration = methodDeclaration
         .replace(/\s+/g, ' ')
         .trim()
@@ -283,14 +317,10 @@ const processFiles = async () => {
         cleanMethodDeclaration,
       )
       const methodName = methodDeclaration.split(' ')[1].split('(')[0]
-      const specificQueryKey = extractName(methodName).suffix
-      // queries[specificQueryKey] = parameters.length
-      //   ? `(${generateParamListWithTypes(parameters)}) => \`${camelToKebabCase(
-      //       baseQueryKey,
-      //     )} - $\{${generateParamListWithoutTypes(parameters)}\}\``
-      //   : `() => \`${camelToKebabCase(baseQueryKey)}\``
+      const { suffix: specificQueryKey, verb: queryAction } =
+        extractName(methodName)
 
-      queries[specificQueryKey] = parameters
+      queries[specificQueryKey] = [parameters, queryAction]
 
       const hookName = generateHookName(methodName)
       const hookContent = generateHookFile({
@@ -302,6 +332,7 @@ const processFiles = async () => {
         controllerName,
         returnType,
         parameters,
+        url: urlsByMethod[index],
       })
       const hookFileName = `${hookName}.ts`
 

@@ -446,15 +446,21 @@ function determineComponent(
 }
 
 function mapFieldTypeToType(fieldType, label, fieldName) {
-  if (
-    label.includes('id') ||
-    label.includes('Id') ||
-    fieldName.includes('id') ||
-    fieldName.includes('Id')
-  ) {
+  // if (
+  //   label.includes('id') ||
+  //   label.includes('Id') ||
+  //   fieldName.includes('id') ||
+  //   fieldName.includes('Id')
+  // ) {
+  //   return 'id'
+  // }
+  // if (label.includes('number') || label.includes('Number')) {
+  //   return 'number'
+  // }
+  if (fieldType.includes('id') || fieldType.includes('Id')) {
     return 'id'
   }
-  if (label.includes('number') || label.includes('Number')) {
+  if (fieldType.includes('number') || fieldType.includes('Number')) {
     return 'number'
   }
   switch (fieldType) {

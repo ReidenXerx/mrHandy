@@ -7,6 +7,7 @@
   "scripts": {
     "gen": "node --inspect index.js",
     "gen-hooks": "node --inspect controller-parser/index.js",
+    "gen-hooks-debug": "node --inspect-brk controller-parser/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
