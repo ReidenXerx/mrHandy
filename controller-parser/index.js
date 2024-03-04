@@ -244,9 +244,10 @@ const generateQueryFile = (queryMappings, baseQueryKey, filePath) => {
         parameters,
       )}) => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
         key,
-      )}', \`$\{${generateParamListWithoutTypes(
-        parameters,
-      )}\}\`, '${queryAction}'],\n`
+      )}', ${generateParamListWithoutTypes(parameters)
+        .split(',')
+        .map((param) => `\`$\{${param}\}\``)
+        .join()}, '${queryAction}'],\n`
     } else if (queryAction.length > 1) {
       fileContent += `  ${capitalize(
         queryAction,
@@ -299,7 +300,7 @@ const processFiles = async () => {
     }
     // Extract method declarations
     const methodDeclarations = fileContent.match(
-      /public\s+[a-zA-Z]+\([^)]*\)\s*:\s*CancelablePromise<[^{]+?{/g,
+      /public\s+[a-zA-Z0-9]+\([^)]*\)\s*:\s*CancelablePromise<[\s\S]+?>\s*{/g,
     )
 
     const urlsByMethod = extractUrls(fileContent)
