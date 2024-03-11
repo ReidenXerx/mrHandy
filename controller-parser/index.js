@@ -67,7 +67,7 @@ const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 // Function to generate hook name
 const generateHookName = (methodName) => {
   const verb = methodName.match(
-    /^(get|post|update|delete|download|approve|cancel|import|proceed|end|import)/i,
+    /^(get|post|update|delete|download|approve|cancel|import|proceed|end|import|add|make)/i,
   )[0]
   const suffix = methodName.replace(verb, '')
   if (
@@ -79,6 +79,7 @@ const generateHookName = (methodName) => {
       'proceed',
       'end',
       'import',
+      'add',
     ].includes(verb.toLowerCase())
   ) {
     return `use${capitalize(verb)}${capitalize(suffix)}`
@@ -90,7 +91,7 @@ const generateHookName = (methodName) => {
 
 const extractName = (methodName) => {
   const verb = methodName.match(
-    /^(get|post|update|delete|download|approve|cancel|import)/i,
+    /^(get|post|update|delete|download|approve|cancel|import|add|make)/i,
   )?.[0]
   const suffix = methodName.replace(verb, '').replace('ControllerService', '')
   return { verb, suffix }
@@ -235,31 +236,33 @@ export default ${hookName};
 const generateQueryFile = (queryMappings, baseQueryKey, filePath) => {
   let fileContent = `export const ${baseQueryKey}Queries = {\n`
 
-  Object.entries(queryMappings).forEach(([key, [parameters, queryAction]]) => {
-    queryAction = queryAction === 'get' ? 'fetch' : queryAction
-    if (parameters.length && Array.isArray(parameters)) {
-      fileContent += `  ${capitalize(
-        queryAction,
-      )}${key}: (${generateParamListWithTypes(
-        parameters,
-      )}) => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
-        key,
-      )}', ${generateParamListWithoutTypes(parameters)
-        .split(',')
-        .map((param) => `\`$\{${param}\}\``)
-        .join()}, '${queryAction}'],\n`
-    } else if (queryAction.length > 1) {
-      fileContent += `  ${capitalize(
-        queryAction,
-      )}${key}: () => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
-        key,
-      )}', '${queryAction}'],\n`
-    } else {
-      fileContent += `  ${key}: () => ['${camelToKebabCase(
-        baseQueryKey,
-      )}', '${camelToKebabCase(key)}'],\n`
-    }
-  })
+  Object.entries(queryMappings).forEach(
+    ([keyFullName, [key, parameters, queryAction]]) => {
+      queryAction = queryAction === 'get' ? 'fetch' : queryAction
+      if (parameters.length && Array.isArray(parameters)) {
+        fileContent += `  ${capitalize(
+          queryAction,
+        )}${key}: (${generateParamListWithTypes(
+          parameters,
+        )}) => ['${camelToKebabCase(baseQueryKey)}', '${camelToKebabCase(
+          key,
+        )}', ${generateParamListWithoutTypes(parameters)
+          .split(',')
+          .map((param) => `\`$\{${param}\}\``)
+          .join()}, '${queryAction}'],\n`
+      } else if (queryAction.length > 1) {
+        fileContent += `  ${capitalize(
+          queryAction,
+        )}${key}: () => ['${camelToKebabCase(
+          baseQueryKey,
+        )}', '${camelToKebabCase(key)}', '${queryAction}'],\n`
+      } else {
+        fileContent += `  ${key}: () => ['${camelToKebabCase(
+          baseQueryKey,
+        )}', '${camelToKebabCase(key)}'],\n`
+      }
+    },
+  )
 
   fileContent += '} as const;\n'
 
@@ -321,7 +324,7 @@ const processFiles = async () => {
       const { suffix: specificQueryKey, verb: queryAction } =
         extractName(methodName)
 
-      queries[specificQueryKey] = [parameters, queryAction]
+      queries[methodName] = [specificQueryKey, parameters, queryAction]
 
       const hookName = generateHookName(methodName)
       const hookContent = generateHookFile({
